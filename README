@@ -1,0 +1,22 @@
+qir - A simple, effecent IRC client (under 2k LOC too!)
+========================================================
+
+qir (Quick IRc) is a simple, and cleanly written IRC 
+client in C. It only has only one dependency, which is 
+ncurses. It supports most irc features and runs on all 
+unix-based operating systems (windows port on the way).
+
+Installation
+--------------
+Installing qir is really simple, just open and modify 
+config.mk as you see fit, then run these commands...
+
+$ make
+$ sudo make install
+
+Usage
+--------------
+Run 'qir' and you're good to go!
+For more help, run 'man qir' or
+'qir -h'
+
