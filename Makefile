@@ -2,11 +2,12 @@
 
 # POSIX Compatible mode. Also build silently
 .POSIX:
-# .SILENT:
+.SILENT:
 
 include config.mk
 
-SRC = qir.c
+SRC = qir.c \
+      window.c 
 OBJ = ${SRC:.c=.o}
 
 all: config.mk qir
@@ -15,9 +16,9 @@ all: config.mk qir
 	echo CC $<
 	$(CC) $(QIR_CFLAGS) -o $@ -c $<
 
-qir: $(OBJ)
+qir: $(OBJ) 
 	echo LINK qir
-	$(CC) -o $@ $< $(QIR_LDFLAGS)
+	$(CC) -o $@ $(OBJ) $(QIR_LDFLAGS)
 
 clean:
 	rm -f qir $(OBJ)
