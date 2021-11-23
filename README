@@ -14,9 +14,13 @@ config.mk as you see fit, then run these commands...
 $ make
 $ sudo make install
 
+NOTE: For the build to succeed, ncurses needs to be 
+installed. Also, changing DESTDIR from /usr/local to
+/usr means that manpages won't be installed in the
+right directory!
+
 Usage
 --------------
 Run 'qir' and you're good to go!
-For more help, run 'man qir' or
-'qir -h'
+For more help, run 'man qir' or 'qir -h'
 
