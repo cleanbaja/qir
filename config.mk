@@ -1,13 +1,13 @@
 # Respect any user-specified flags
-QIR_CFLAGS = $(CFLAGS)
-QIR_LDFLAGS = $(LDFLAGS)
+QIRK_CFLAGS = $(CFLAGS)
+QIRK_LDFLAGS = $(LDFLAGS)
 
 # Release build with LTO by default
-QIR_CFLAGS += -std=c11 \
-	      -Ofast   \
-	      -flto    \
+QIRK_CFLAGS += -std=gnu11 \
+	      -Og     \
+	      -g      \
 	      -I.
-QIR_LDFLAGS += -flto -lncurses
+QIRK_LDFLAGS += -lncurses
 
 # Install to /usr/local by default
 DESTDIR := /usr/local

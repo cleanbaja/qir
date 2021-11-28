@@ -1,36 +1,39 @@
-# Makefile for qir - Copyright (c) 2021 Yusuf M (cleanbaja)
+# Makefile for qirk - Copyright (c) 2021 Yusuf M (cleanbaja)
 
 # POSIX Compatible mode. Also build silently
 .POSIX:
 .SILENT:
 
+VERSION := 0.1.0
+
 include config.mk
 
-SRC = qir.c \
-      window.c 
+SRC = qirk.c    \
+      window.c \
+      client.c 
 OBJ = ${SRC:.c=.o}
 
-all: config.mk qir
+all: config.mk qirk
 
 .c.o:
 	echo CC $<
-	$(CC) $(QIR_CFLAGS) -o $@ -c $<
+	$(CC) $(QIRK_CFLAGS) -o $@ -c $<
 
-qir: $(OBJ) 
-	echo LINK qir
-	$(CC) -o $@ $(OBJ) $(QIR_LDFLAGS)
+qirk: $(OBJ) 
+	echo LINK qirk
+	$(CC) -o $@ $(OBJ) $(QIRK_LDFLAGS)
 
 clean:
-	rm -f qir $(OBJ)
+	rm -f qirk $(OBJ)
 
 install: all
-	install -p qir $(DESTDIR)/bin/
+	install -p qirk $(DESTDIR)/bin/
 	mkdir -p "$(DESTDIR)/man/man1"
-	sed "s/VERSION/$(VERSION)/g" < qir.1 > "$(DESTDIR)/man/man1/qir.1"
-	chmod 644 "$(DESTDIR)/man/man1/qir.1"
+	sed "s/VERSION/$(VERSION)/g" < man/qirk.1 > "$(DESTDIR)/man/man1/qirk.1"
+	chmod 644 "$(DESTDIR)/man/man1/qirk.1"
 
 uninstall:
-	rm -f $(DESTDIR)/qir $(DESTDIR)/man/man1/qir.1
+	rm -f $(DESTDIR)/qirk $(DESTDIR)/man/man1/qirk.1
 
 .PHONY: all clean install uninstall
 

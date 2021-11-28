@@ -4,7 +4,7 @@
 #include <sys/ioctl.h>
 #include <string.h>
 
-#include "qir.h"
+#include "qirk.h"
 
 static int scr_width, scr_height = 0;
 
@@ -18,7 +18,7 @@ void window_create() {
 	// Check for color support before doing anything else
 	if (has_colors() == FALSE) {
 		endwin();
-		fprintf(stderr, "qir: terminal dosen't support colors!\n");
+		fprintf(stderr, "qirk: terminal dosen't support colors!\n");
 		exit(1);
 	}
 
@@ -37,10 +37,9 @@ void window_create() {
 	header_win = newwin(1, scr_width, 0, 0);
 	status_bar_win = newwin(1, scr_width, scr_height - 1, 0);
 	main_win = newwin(scr_height - 2, scr_width, 1, 0);
-	
-	box(main_win, 0, 0);
-	wrefresh(main_win);
-	
+
+	// Enable scrolling for the main window
+	scrollok(main_win, TRUE);
 	// Paint bar
 	wattron(header_win, COLOR_PAIR(BAR_COLOR));
 	for (int i = 0; i < (scr_width); i++) {
@@ -48,7 +47,7 @@ void window_create() {
 	}
 
 	// Then set the header
-	char* header_message = "qir - The Quick IRc client (v0.1.0)";
+	char* header_message = "qirk - The Quick IRc Klient (v0.1.0)";
 	int begin_pos = (scr_width / 2) - (strlen(header_message) / 2);
 	
 	mvwprintw(header_win, 0, begin_pos, header_message);
