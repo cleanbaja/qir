@@ -4,26 +4,26 @@
 .POSIX:
 .SILENT:
 
-VERSION := 0.1.0
+VERSION := 0.1.1
+NOTIFY := printf "  \\033[1;96m%8s\\033[0m  \\033[1;m%s\\033[0m\\n"
 
 include config.mk
 
-SRC = qirk.c    \
-      window.c \
-      client.c 
+SRC = qirk.c 
 OBJ = ${SRC:.c=.o}
 
 all: config.mk qirk
 
 .c.o:
-	echo CC $<
+	$(NOTIFY) "CC" "$<"
 	$(CC) $(QIRK_CFLAGS) -o $@ -c $<
 
 qirk: $(OBJ) 
-	echo LINK qirk
+	$(NOTIFY) "LINK" "qirk"
 	$(CC) -o $@ $(OBJ) $(QIRK_LDFLAGS)
 
-clean:
+clean:	notags
+	$(NOTIFY) "CLEAN" "qirk"
 	rm -f qirk $(OBJ)
 
 install: all
@@ -34,6 +34,14 @@ install: all
 
 uninstall:
 	rm -f $(DESTDIR)/qirk $(DESTDIR)/man/man1/qirk.1
+
+tags:
+	$(NOTIFY) "GEN" "tags"
+	ctags ./*.c
+
+notags:
+	$(NOTIFY) "CLEAN" "tags"
+	rm -f tags
 
 .PHONY: all clean install uninstall
 

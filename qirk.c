@@ -1,71 +1,156 @@
-#include <getopt.h>
-#include <stdlib.h>
 #include <stdio.h>
-#include <errno.h>
+#include <netdb.h>
 #include <unistd.h>
-#include <time.h>
-#include <pwd.h>
+#include <sys/epoll.h>
+#include <stdarg.h>
+#include <string.h>
+#include <stdlib.h>
 
-#include "qirk.h"
+#define MAX_EVENTS 2
+static char* msg_buf = NULL;
+static int sock_fd = -1;
 
-static char* hostname = "irc.libera.chat";
-static char* port = "6667";
-static char* arg0 = NULL;
-static char* username = NULL;
+int irc_connect(char* host, char* port) {
+	struct addrinfo hints = {0};
+	struct addrinfo *res;
+	int st, ret_fd;
 
-static void version() {
-	printf("qirk v0.1.0\n");
-	exit(0);
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+
+	if ((st = getaddrinfo(host, port, &hints, &res)) != 0) {
+		printf("qirk: can't connect to socket (%s)\n", gai_strerror(st));
+		goto fail;
+	}
+
+	ret_fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	if (ret_fd < 0) {
+		printf("qirk: error opening socket!\n");
+		goto fail;
+	}
+
+	st = connect(ret_fd, res->ai_addr, res->ai_addrlen);
+	if (st != 0) {
+		printf("qirk: error connecting to socket!\n");
+		goto fail;
+	}
+
+	return ret_fd;
+fail:
+	return -1;
 }
 
-static void usage() {
-	fprintf(stderr, "USAGE: %s [-u username] [-s server] [-p port]\n", arg0);
-	exit(1);
+void irc_write(char* fmt, ...) {
+	va_list va;
+	va_start(va, fmt);
+
+	char sbuf[256];
+	int len = vsprintf(sbuf, fmt, va);
+
+	write(sock_fd, sbuf, len);
+
+	va_end(va);
+	memset(sbuf, 0, len);
 }
 
-static char* get_username() {
-	int uid = geteuid();
-	struct passwd* pw = getpwuid(uid);
+static void parse_command(char* str) {
+	char *prefix, *msg, *suffix, *nick, *cmd, *params;
+	char *save_ptr, *save_ptr2, *save_ptr3;
 
-	if (pw) {
-		return pw->pw_name;
+	prefix = strtok(str, " ") + 1;
+	suffix = strtok(NULL, ":");
+	msg    = strtok(NULL, "\r");
+	nick   = strtok(prefix, "!");
+	cmd    = strtok(suffix, "#& ");
+	
+	strtok(NULL, " \r");
+	params = strtok(NULL, ":\r");
+
+	if (strcmp(cmd, "NOTICE") == 0) {
+		printf("NOTICE: %s\n", msg);
 	} else {
-		return "generic_user";
+		if (atoi(cmd) <= 3) {
+			printf("-> %s\n", msg);
+			goto out;
+		}
+	}
+out:	
+	// printf("<%s> (%s) %s\n", nick, cmd, msg);
+}
+
+static void parse_message() {
+	char* save_ptr;
+	char* nix = strtok_r(msg_buf, "\n", &save_ptr);
+	while (nix != NULL) {
+		parse_command(nix);
+		nix = strtok_r(NULL, "\n", &save_ptr);
 	}
 }
 
 int main(int argc, char** argv) {
-	arg0 = argv[0];
+	puts("Hello from qirk!");
+	msg_buf = (char*)malloc(2048);
 
-	int cval;
-	while ((cval = getopt(argc, argv, "v:s:p:u")) != -1) {
-		switch (cval) {
-		case 'v' : version();         break;
-		case 'u' : username = optarg; break;
-		case 's' : hostname = optarg; break;
-		case 'p' : port = optarg;     break;
-		case '?' : usage();           break;
+	sock_fd = irc_connect("irc.libera.chat", "6667");
+	if (sock_fd < 0) {
+		goto out;
+	}
+
+	struct epoll_event event, events[MAX_EVENTS];
+	int epoll_fd = epoll_create(2); // Watch stdin and sock_fd
+	if (epoll_fd < 0) {
+		printf("qirk: epoll_create() failed\n");
+		goto out;
+	}
+
+	// Add Standard Input to the list of file descriptors to watch
+	event.events = EPOLLIN;
+	event.data.fd = 0;
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, 0, &event)) {
+		printf("qirk: unable to add socket to watchlist!\n");
+		goto out;
+	}
+
+	// Add the Socket Descriptor to the list of file descriptors to watch
+	event.events = EPOLLIN;
+	event.data.fd = sock_fd;
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sock_fd, &event)) {
+		printf("qirk: unable to add stdin to watchlist!\n");
+		goto out;
+	}
+
+	irc_write("NICK %s\r\n", "cleanbaja");
+	irc_write("USER %s - - :%s\r\n", "cleanbaja", "cleanbaja");
+
+	int nfds;
+	for(;;) {
+		nfds = epoll_wait(epoll_fd, events, MAX_EVENTS, 30000); // 30 second timeout
+		for (int i = 0; i < nfds; i++) {
+			if (events[i].data.fd == sock_fd) {
+				int msglen = read(sock_fd, msg_buf, 2048);
+				if (msglen < 0) {
+					printf("qirk: connection timed out!\n");
+					goto out;
+				}
+
+				parse_message();
+
+				memset(msg_buf, 0, msglen);
+			} else if (events[i].data.fd == 0) {
+				if (getc(stdin) == 'q') {
+					free(msg_buf);
+					return 0;
+				}
+			} else {
+				printf("qirk: unknown epoll fd %d\n", events[i].data.fd);
+				goto out;
+			}
 		}
 	}
 
-	window_create();
-
-	// Attempt to get username (for nick)
-	if (!username) {
-		username = get_username();
-	}	
-
-	char mes[256];
-	snprintf(mes, 256, "Connecting to %s:%s as %s", hostname, port, username);
-	window_set_status(mes, -1);
-
-	irc_connect(hostname, port);
-	irc_write("NICK %s\r\n", username);
-	irc_write("USER %s localhost %s :%s\r\n", username, hostname, username);
-
-	// Enter the run loop
-	irc_run_loop(hostname);	
-
-	return 0;
+out:
+	if (msg_buf)
+		free(msg_buf);
+	return EXIT_FAILURE;
 }
 
